@@ -8,7 +8,7 @@ require (
 	github.com/go-telegram/ui v0.3.2
 	github.com/pocketbase/dbx v1.10.1
 	github.com/pocketbase/pocketbase v0.22.12
-	github.com/twinj/uuid v1.0.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -53,7 +53,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
-	github.com/myesui/uuid v1.0.0 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/spf13/cast v1.6.0 // indirect
@@ -77,7 +76,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240509183442-62759503f434 // indirect
 	google.golang.org/grpc v1.63.2 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
-	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	modernc.org/gc/v3 v3.0.0-20240304020402-f0dba7c97c2b // indirect
 	modernc.org/libc v1.50.5 // indirect
 	modernc.org/mathutil v1.6.0 // indirect

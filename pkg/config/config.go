@@ -1,52 +1,47 @@
 package config
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
+	"gopkg.in/yaml.v3"
+	"log"
 	"os"
 )
 
 type Config struct {
 	Bot struct {
-		Token string `json:"token"`
-	} `json:"bot"`
+		Token string `yaml:"token"`
+	} `yaml:"bot"`
 	Api struct {
-		ConfigUrl string `json:"config_url"`
-		Token     string `json:"token"`
-		StartUrl  string `json:"start"`
-	} `json:"api"`
+		ConfigUrl string `yaml:"config_url"`
+		Token     string `yaml:"token"`
+		StartUrl  string `yaml:"start"`
+	} `yaml:"api"`
 	Settings struct {
-		ButtonsHeader string `json:"buttons_header"`
+		ButtonsHeader string `yaml:"buttons_header"`
 	}
 }
 
 var conf *Config
 
 func Init() {
-	// open config file config.json
-	jsonFile, err := os.Open("config.json")
+	file, err := os.OpenFile("config.yaml", os.O_RDONLY, 0600)
+
 	if err != nil {
-		panic(err)
+		log.Fatalf("error opening/creating file: %v", err)
 	}
-	defer func(jsonFile *os.File) {
-		err := jsonFile.Close()
-		if err != nil {
+	defer file.Close()
 
-		}
-	}(jsonFile)
-
-	// Read the file contents
-	byteValue, err := io.ReadAll(jsonFile)
+	dec := yaml.NewDecoder(file)
+	err = dec.Decode(&conf)
 	if err != nil {
 		panic(err)
 	}
 
-	conf = &Config{}
-	err = json.Unmarshal(byteValue, &conf)
-	if err != nil {
-		fmt.Println(err)
-		panic(err)
+	if conf.Api.ConfigUrl == "" {
+		log.Fatalf("config.yaml is missing api.config_url")
+	}
+
+	if conf.Api.Token == "" {
+		log.Fatalf("config.yaml is missing api.token")
 	}
 
 }
