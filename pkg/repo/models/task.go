@@ -2,7 +2,6 @@ package database
 
 import (
 	"bodygraph-bot/pkg/common"
-	"github.com/pocketbase/pocketbase/daos"
 	"github.com/pocketbase/pocketbase/models"
 )
 
@@ -17,7 +16,7 @@ type Task struct {
 	TgMessageId   int                 `db:"tg_message_id" json:"tg_message_id"`
 }
 
-func CastTaskFromDbModel(dao *daos.Dao, record *models.Record) *Task {
+func CastTaskFromDbModel(record *models.Record) *Task {
 	task := &Task{}
 	task.Id = record.Id
 	task.TgChatId = record.GetInt("tg_chat_id")

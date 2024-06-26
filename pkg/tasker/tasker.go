@@ -12,7 +12,7 @@ func CheckTasksToProcess() {
 	for {
 		time.Sleep(time.Second * 5)
 
-		if !repo.RepoIsRunning() {
+		if !repo.IsRunning() {
 			log.Println("Repo is not running, skipping CheckTasksToProcess")
 			continue
 		}
@@ -52,7 +52,7 @@ func CheckTasksToSend() {
 	for {
 		time.Sleep(time.Second * 5)
 
-		if !repo.RepoIsRunning() {
+		if !repo.IsRunning() {
 			log.Println("Repo is not running, skipping CheckTasksToSend ")
 			continue
 		}

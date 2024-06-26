@@ -1,14 +1,11 @@
 package botlogic
 
 import (
-	//botlogic "bodygraph-bot/pkg/bot"
 	"bodygraph-bot/pkg/common"
 	"bodygraph-bot/pkg/config"
-	"bodygraph-bot/pkg/repo"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/fatih/color"
 	tglib "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/keyboard/inline"
@@ -18,8 +15,6 @@ import (
 	"strings"
 	"time"
 )
-
-var red = color.New(color.FgRed).SprintFunc()
 
 var BotInstance *tglib.Bot
 
@@ -33,14 +28,6 @@ func NewButton(label string, data string) MessageButton {
 		Label: label,
 		Data:  data,
 	}
-}
-
-func ButtonsSet(buttons ...MessageButton) [][]MessageButton {
-	var out [][]MessageButton
-	for _, button := range buttons {
-		out = append(out, []MessageButton{button})
-	}
-	return out
 }
 
 func Init() {
@@ -64,8 +51,6 @@ func Init() {
 	println("Bot instance created", BotInstance)
 
 	BotInstance.RegisterHandler(tglib.HandlerTypeMessageText, "/start", tglib.MatchTypeExact, startHandler)
-	BotInstance.RegisterHandler(tglib.HandlerTypeMessageText, "/refresh_cities", tglib.MatchTypeExact, citiesHandler)
-	//BotInstance.RegisterHandler(tglib.HandlerTypeMessageText, "/refresh_menu", tglib.MatchTypeExact, refreshMenuHandler)
 
 	BotInstance.Start(ctx)
 }
@@ -102,7 +87,6 @@ func SendErrorMessage(chatID int64, err error) error {
 	}
 	common.ErrorLog(err)
 	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: fmt.Sprintf("Error: %s", err.Error())})
-	//return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: "Что-то пошло не так, мы уже разибраемся с проблемой"})
 
 }
 
@@ -119,16 +103,9 @@ func SendRawMessage(chatID int64, message string) (*models.Message, error) {
 
 func SendMessage(chatID int64, msg string, callback *common.MessageData) error {
 	common.FuncLog("SendMessage", chatID, msg)
-	sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg})
 	common.SetUserContext(chatID, callback)
-	return nil
+	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg})
 }
-
-//func SendMarkDownMessage(chatID int64, msg string, callback *common.MessageData) error {
-//	common.FuncLog("SendMarkDownMessage", chatID, msg)
-//	common.SetUserContext(chatID, callback)
-//	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ParseMode: models.ParseModeMarkdown})
-//}
 
 func SendHtmlMessageWithPictures(chatID int64, msg string, images []string) error {
 	common.FuncLog("SendHtmlMessageWithPictures", chatID, msg)
@@ -164,19 +141,6 @@ func DeleteMessage(chatID int64, messageID int) error {
 	return nil
 }
 
-//func SendMessageWithReplyMarkup(chatID int64, msg string, buttons [][]MessageButton, callback *common.TextCallback) error {
-//	common.SetUserContext(chatID, callback)
-//
-//	rm := inline.New(BotInstance)
-//	for _, row := range buttons {
-//		rm = rm.Row()
-//		for _, button := range row {
-//			rm.Button(button.Label, []byte(button.Data), OnInlineKeyboardSelect)
-//		}
-//	}
-//	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ReplyMarkup: rm})
-//}
-
 func SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][]MessageButton, callback *common.MessageData) error {
 	common.SetUserContext(chatID, callback)
 
@@ -190,85 +154,15 @@ func SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][
 	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ReplyMarkup: rm, ParseMode: models.ParseModeHTML})
 }
 
-func startHandler(ctx context.Context, b *tglib.Bot, update *models.Update) {
+func startHandler(_ context.Context, _ *tglib.Bot, update *models.Update) {
 	common.FuncLog("startHandler")
-	err := SendStartMessage(update.Message.Chat)
-	SendErrorMessage(update.Message.Chat.ID, err)
-}
-
-func citiesHandler(ctx context.Context, b *tglib.Bot, update *models.Update) {
-	common.FuncLog("citiesHandler")
-	SendMessage(update.Message.Chat.ID, "Обновляю справочник городов", nil)
-	err := repo.InsertCitiesFromApi()
+	err := SendStartMessage(update.Message.Chat.ID)
 	if err != nil {
-		common.ErrorLog(err)
-		SendMessage(update.Message.Chat.ID, err.Error(), nil)
-		return
+		_ = SendErrorMessage(update.Message.Chat.ID, err)
 	}
-	SendMessage(update.Message.Chat.ID, "Города загружены успешно", nil)
 }
 
-//func refreshMenuHandler(ctx context.Context, b *tglib.Bot, update *models.Update) {
-//	common.FuncLog("refreshMenuHandler")
-//	menu, err := getMenu()
-//	if err != nil {
-//		SendErrorMessage(update.Message.Chat.ID, err)
-//		return
-//	}
-//
-//	commands := make([]models.BotCommand, 0)
-//
-//	for _, menuItem := range menu.Items {
-//		println("menuItem.Command", menuItem.Command)
-//		commands = append(commands, models.BotCommand{Command: menuItem.Command, Description: menuItem.Label})
-//
-//	}
-//	params := tglib.SetMyCommandsParams{
-//		Commands: commands,
-//		Scope:    &models.BotCommandScopeDefault{},
-//	}
-//	_, err = BotInstance.SetMyCommands(ctx, &params)
-//
-//	if err != nil {
-//		SendErrorMessage(update.Message.Chat.ID, err)
-//		return
-//	}
-//
-//	SendMessage(update.Message.Chat.ID, "Меню обновлено успешно.\n\nМожет потребоваться некоторое время для того, чтобы обновлённый список появился на клиенте\n\nВозможно потребуется выйти и зайти в чат, чтобы увидеть изменения", nil)
-//
-//}
-
-//func processCommand(chatID int64, cmd string) error {
-//	common.FuncLog("processCommand", chatID, cmd)
-//
-//	log.Printf("Got command %s\n", cmd)
-//
-//	user, err := repo.GetUserByChatId(chatID)
-//	if err != nil {
-//		return SendErrorMessage(chatID, err)
-//	}
-//
-//	menuItem, err := getMenuItemByCommand(cmd, user)
-//
-//	if err != nil {
-//		return SendErrorMessage(chatID, err)
-//
-//	}
-//
-//	if menuItem.Action != "" {
-//		err = processInner(chatID, &menuItem)
-//	} else {
-//		err = processOuter(chatID, &menuItem)
-//	}
-//
-//	if err != nil {
-//		return SendErrorMessage(chatID, err)
-//
-//	}
-//	return nil
-//}
-
-func defaultHandler(ctx context.Context, b *tglib.Bot, update *models.Update) {
+func defaultHandler(_ context.Context, _ *tglib.Bot, update *models.Update) {
 
 	if update.Message == nil {
 		log.Println("update.Message is nil")
@@ -280,14 +174,9 @@ func defaultHandler(ctx context.Context, b *tglib.Bot, update *models.Update) {
 	common.FuncLog("defaultHandler", update.Message.Text)
 
 	if strings.HasPrefix(update.Message.Text, "/start") {
-		user, err := repo.GetUserByChatId(chatID)
+		err := SendStartMessage(chatID)
 		if err != nil {
-			SendErrorMessage(update.Message.Chat.ID, err)
-			return
-		}
-		err = getMenu(user)
-		if err != nil {
-			SendErrorMessage(chatID, err)
+			_ = SendErrorMessage(chatID, err)
 			return
 		}
 		return
@@ -296,34 +185,32 @@ func defaultHandler(ctx context.Context, b *tglib.Bot, update *models.Update) {
 	userContext := common.GetUserContext(chatID)
 
 	if userContext == nil {
-		SendMessage(chatID, "Не понимаю о чём это вы (", nil)
+		_ = SendMessage(chatID, "Не понимаю о чём это вы (", nil)
+		_ = SendStartMessage(chatID)
 		return
 	}
 
 	if userContext.Callback == nil {
-		SendMessage(chatID, "Выберите пункт из меню, чтобы продолжить, или /start для выхода в главное меню", nil)
+		_ = SendMessage(chatID, "Выберите пункт из меню, чтобы продолжить, или /start для выхода в главное меню", nil)
 		return
 	}
 
 	err := processOuterText(chatID, update.Message.Text, *userContext.Callback)
 	if err != nil {
-		SendErrorMessage(chatID, err)
+		_ = SendErrorMessage(chatID, err)
 	}
 
 }
 
-func OnInlineKeyboardSelect(ctx context.Context, b *tglib.Bot, mes models.MaybeInaccessibleMessage, data []byte) {
+func OnInlineKeyboardSelect(_ context.Context, _ *tglib.Bot, mes models.MaybeInaccessibleMessage, data []byte) {
 	common.FuncLog("OnInlineKeyboardSelect")
 
-	userContext := common.GetUserContext(mes.Message.Chat.ID)
-
-	//if strings.HasPrefix(string(data), "/") {
-	//	processCommand(mes.Message.Chat.ID, string(data))
-	//}
+	chatId := mes.Message.Chat.ID
+	userContext := common.GetUserContext(chatId)
 
 	if userContext == nil {
-		SendMessage(mes.Message.Chat.ID, "Не понимаю о чём это вы (", nil)
-		SendStartMessage(mes.Message.Chat)
+		_ = SendMessage(chatId, "Не понимаю о чём это вы (", nil)
+		_ = SendStartMessage(chatId)
 		return
 	}
 
@@ -331,7 +218,7 @@ func OnInlineKeyboardSelect(ctx context.Context, b *tglib.Bot, mes models.MaybeI
 
 	err := json.Unmarshal(data, &selectedButton)
 	if err != nil {
-		SendErrorMessage(mes.Message.Chat.ID, err)
+		_ = SendErrorMessage(mes.Message.Chat.ID, err)
 		return
 	}
 
@@ -341,19 +228,15 @@ func OnInlineKeyboardSelect(ctx context.Context, b *tglib.Bot, mes models.MaybeI
 			log.Println("Pressed button", menuItem)
 			err = processOuter(mes.Message.Chat.ID, &menuItem)
 			if err != nil {
-				SendErrorMessage(mes.Message.Chat.ID, err)
+				_ = SendErrorMessage(mes.Message.Chat.ID, err)
 				return
 			}
 			return
 		}
 	}
 
-	SendErrorMessage(mes.Message.Chat.ID, fmt.Errorf("Не найдена кнопка из контекста"))
+	_ = SendErrorMessage(mes.Message.Chat.ID, fmt.Errorf("не найдена кнопка из контекста"))
 
-	//err := userContext(mes.Message, string(data))
-	//if err != nil {
-	//	SendErrorMessage(mes.Message.Chat.ID, err)
-	//}
 }
 
 func SendMessageData(chatID int64, data common.MessageData) error {

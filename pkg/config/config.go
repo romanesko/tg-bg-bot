@@ -29,7 +29,12 @@ func Init() {
 	if err != nil {
 		panic(err)
 	}
-	defer jsonFile.Close()
+	defer func(jsonFile *os.File) {
+		err := jsonFile.Close()
+		if err != nil {
+
+		}
+	}(jsonFile)
 
 	// Read the file contents
 	byteValue, err := io.ReadAll(jsonFile)

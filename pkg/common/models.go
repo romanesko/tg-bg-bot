@@ -36,8 +36,9 @@ type MenuItem struct {
 	Label   string `json:"label"`
 	Command string `json:"command,omitempty"`
 	//Action          string `json:"action,omitempty"`
-	URL             string `json:"url,omitempty"`
-	ProfileRequired bool   `json:"ask_profile,omitempty"`
+	URL             string                 `json:"url,omitempty"`
+	ProfileRequired bool                   `json:"ask_profile,omitempty"`
+	Context         map[string]interface{} `json:"context,omitempty"`
 }
 
 func (m *MenuItem) ToJson() (string, error) {

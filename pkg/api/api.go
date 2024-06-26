@@ -13,6 +13,12 @@ import (
 	"strings"
 )
 
+type Request struct {
+	TgChatId int64                  `json:"tg_chat_id"`
+	Text     string                 `json:"text"`
+	Context  map[string]interface{} `json:"context"`
+}
+
 type Response struct {
 	ID       string `json:"id"`
 	Status   string `json:"status"`
@@ -97,7 +103,12 @@ func fetchUrl(url string, params interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(resp.Body)
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
