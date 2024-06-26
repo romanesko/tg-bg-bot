@@ -12,9 +12,13 @@ type Config struct {
 		Token string `json:"token"`
 	} `json:"bot"`
 	Api struct {
-		Host string `json:"host"`
-		Key  string `json:"key"`
+		ConfigUrl string `json:"config_url"`
+		Token     string `json:"token"`
+		StartUrl  string `json:"start"`
 	} `json:"api"`
+	Settings struct {
+		ButtonsHeader string `json:"buttons_header"`
+	}
 }
 
 var conf *Config
@@ -39,6 +43,7 @@ func Init() {
 		fmt.Println(err)
 		panic(err)
 	}
+
 }
 
 func GetConfig() *Config {

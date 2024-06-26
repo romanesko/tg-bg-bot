@@ -40,12 +40,8 @@ type Api struct {
 	key  string
 }
 
-func NewApi(host, key string) *Api {
-	return &Api{host: host, key: key}
-}
-
-func (api *Api) fetchCities() (CitiesResponse, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/city_list.php?dkey=%s", api.host, api.key))
+func fetchCities() (CitiesResponse, error) {
+	resp, err := http.Get(fmt.Sprintf("https://bodygraph.online/api_v1/city_list.php?dkey=test_public_key"))
 	if err != nil {
 		return CitiesResponse{}, err
 	}
@@ -55,11 +51,11 @@ func (api *Api) fetchCities() (CitiesResponse, error) {
 	return result, err
 }
 
-func (api *Api) GetCities() ([]CityRow, error) {
+func GetCities() ([]CityRow, error) {
 
 	cityRows := []CityRow{}
 
-	cities, err := api.fetchCities()
+	cities, err := fetchCities()
 	if err != nil {
 		return cityRows, fmt.Errorf("fetchCities: %w", err)
 	}
@@ -68,7 +64,7 @@ func (api *Api) GetCities() ([]CityRow, error) {
 		for cityKey := range country.Cities {
 			city := country.Cities[cityKey]
 
-			println(city.ID, city.DisplayName, city.NameRussian, city.RegionRussian)
+			//println(city.ID, city.DisplayName, city.NameRussian, city.RegionRussian)
 
 			countryID, err := strconv.Atoi(country.CountryID)
 			if err != nil {

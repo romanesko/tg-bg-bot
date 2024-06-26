@@ -1,3 +1,5 @@
 *.db
 config.json
 Makefile
+.idea
+.DS_Store
