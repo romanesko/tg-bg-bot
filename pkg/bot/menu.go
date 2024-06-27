@@ -78,12 +78,11 @@ func processOuterText(chatId int64, text string, callback common.TextCallback) e
 }
 
 func contextToJson(request *api.Request) (map[string]any, error) {
-	res := make(map[string]any)
 	var inInterface map[string]interface{}
 	inRec, _ := json.Marshal(request)
 	err := json.Unmarshal(inRec, &inInterface)
 	if err != nil {
 		return nil, err
 	}
-	return res, nil
+	return inInterface, nil
 }

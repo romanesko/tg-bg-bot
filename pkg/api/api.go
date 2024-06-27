@@ -86,6 +86,12 @@ func fetchUrl(url string, params interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if !strings.HasPrefix(url, "http") {
+		conf := config.GetConfig()
+		url = fmt.Sprintf("%s%s", conf.Api.BaseUrl, url)
+	}
+
 	if strings.Contains(url, "?") {
 		url = url + "&dkey=" + cfg.Api.Token
 	} else {

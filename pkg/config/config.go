@@ -4,6 +4,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
+	"regexp"
 )
 
 type Config struct {
@@ -14,6 +15,7 @@ type Config struct {
 		ConfigUrl string `yaml:"config_url"`
 		Token     string `yaml:"token"`
 		StartUrl  string `yaml:"start"`
+		BaseUrl   string `yaml:"base_url"`
 	} `yaml:"api"`
 	Settings struct {
 		ButtonsHeader string `yaml:"buttons_header"`
@@ -44,6 +46,19 @@ func Init() {
 		log.Fatalf("config.yaml is missing api.token")
 	}
 
+	if conf.Api.BaseUrl == "" {
+		re := regexp.MustCompile(`(https?://[^/]+)`)
+
+		// Find the scheme and host using the regular expression
+		match := re.FindStringSubmatch(conf.Api.ConfigUrl)
+
+		if len(match) > 1 {
+			// The scheme and host are in the first submatch
+			schemeAndHost := match[1]
+			conf.Api.BaseUrl = schemeAndHost
+			log.Println("Base Url Host:", schemeAndHost)
+		}
+	}
 }
 
 func GetConfig() *Config {

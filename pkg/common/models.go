@@ -8,14 +8,15 @@ type Message struct {
 }
 
 type TextCallback struct {
-	Url     string                 `json:"text"`
+	Url     string                 `json:"url"`
 	Context map[string]interface{} `json:"context"`
 }
 
 type MessageData struct {
-	Messages []Message  `json:"messages"`
-	Buttons  []MenuItem `json:"buttons"`
-	Files    *[]struct {
+	Messages      []Message  `json:"messages"`
+	ButtonsHeader string     `json:"buttons_header"`
+	Buttons       []MenuItem `json:"buttons"`
+	Files         *[]struct {
 		Name string `json:"name"`
 		URL  string `json:"url"`
 	} `json:"files"`

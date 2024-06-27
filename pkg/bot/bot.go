@@ -260,8 +260,12 @@ func SendMessageData(chatID int64, data common.MessageData) error {
 
 	cfg := config.GetConfig()
 
+	if data.ButtonsHeader == "" {
+		data.ButtonsHeader = cfg.Settings.ButtonsHeader
+	}
+
 	if len(data.Buttons) > 0 {
-		err = SendHtmlMessageMessageWithReplyMarkup(chatID, cfg.Settings.ButtonsHeader, buttons, &data)
+		err = SendHtmlMessageMessageWithReplyMarkup(chatID, data.ButtonsHeader, buttons, &data)
 		if err != nil {
 			return err
 		}
