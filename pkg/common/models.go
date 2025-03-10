@@ -5,8 +5,9 @@ import (
 )
 
 type Message struct {
-	Text   string   `json:"text"`
-	Images []string `json:"images"`
+	Text        string   `json:"text"`
+	Images      []string `json:"images"`
+	ShowPreview bool     `json:"show_preview"`
 }
 
 type TextCallback struct {
@@ -32,13 +33,19 @@ type ConfResponse struct {
 	Response ConfResponseResponse `json:"response"`
 }
 
+type Action struct {
+	Url      string `json:"url"`
+	Interval int    `json:"interval"`
+}
+
 type ConfResponseResponse struct {
-	StartUrl        string `json:"start"`
-	ButtonsHeader   string `json:"buttons_header"`
-	QueueUrl        string `json:"queue_url"`
-	QueueInterval   int    `json:"queue_interval"`
-	ActionsUrl      string `json:"actions_url"`
-	ActionsInterval int    `json:"actions_interval"`
+	StartUrl        string   `json:"start"`
+	ButtonsHeader   string   `json:"buttons_header"`
+	QueueUrl        string   `json:"queue_url"`
+	QueueInterval   int      `json:"queue_interval"`
+	ActionsUrl      string   `json:"actions_url"`
+	Actions         []Action `json:"actions"`
+	ActionsInterval int      `json:"actions_interval"`
 }
 
 type Config struct {
@@ -50,6 +57,7 @@ type Config struct {
 	QueueUrl        string
 	QueueInterval   int
 	ActionsUrl      string
+	Actions         []Action
 	ActionsInterval int
 }
 

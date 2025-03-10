@@ -9,7 +9,6 @@ import (
 	"fmt"
 	tglib "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"github.com/go-telegram/ui/keyboard/inline"
 	"github.com/google/uuid"
 	"log"
 	"os"
@@ -62,6 +61,12 @@ func Init() {
 
 	if cfg.ActionsUrl != "" && cfg.ActionsInterval > 0 {
 		go CheckActionsToProcess(cfg.ActionsUrl, cfg.ActionsInterval)
+	}
+
+	if cfg.Actions != nil {
+		for _, action := range cfg.Actions {
+			go CheckActionsToProcess(action.Url, action.Interval)
+		}
 	}
 
 	BotInstance.Start(ctx)
@@ -120,14 +125,19 @@ func SendMessage(chatID int64, msg string, callback *common.MessageData) error {
 	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg})
 }
 
-func SendHtmlMessageWithPictures(chatID int64, msg string, images []string) error {
+func linkPreviewOptions(disabled bool) *models.LinkPreviewOptions {
+	return &models.LinkPreviewOptions{IsDisabled: &disabled}
+}
+
+func SendHtmlMessageWithPictures(chatID int64, msg string, images []string, showPreview bool) error {
 	common.FuncLog("SendHtmlMessageWithPictures", chatID, msg)
 	//common.SetUserContext(chatID, nil)
 
 	msg = common.RemoveUnwantedTags(msg)
 
 	if len(images) == 0 {
-		return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ParseMode: models.ParseModeHTML})
+
+		return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ParseMode: models.ParseModeHTML, LinkPreviewOptions: linkPreviewOptions(!showPreview)})
 	}
 
 	for i := range images {
@@ -190,32 +200,7 @@ func SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][
 	}
 
 	markup := &models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
-	previewDisabled := true
-	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ReplyMarkup: markup, ParseMode: models.ParseModeHTML, LinkPreviewOptions: &models.LinkPreviewOptions{IsDisabled: &previewDisabled}})
-}
-
-func _SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][]MessageButton, callback *common.MessageData) error {
-	common.SetUserContext(chatID, callback)
-
-	msg = common.RemoveUnwantedTags(msg)
-
-	rm := inline.New(BotInstance)
-
-	for _, row := range buttons {
-		rm = rm.Row()
-		for _, button := range row {
-
-			if button.Link != "" {
-				rm.Button(button.Label, []byte(button.Link), OnInlineKeyboardSelect)
-			} else {
-
-				rm.Button(button.Label, []byte(button.Data), OnInlineKeyboardSelect)
-			}
-
-		}
-	}
-
-	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ReplyMarkup: rm, ParseMode: models.ParseModeHTML})
+	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ReplyMarkup: markup, ParseMode: models.ParseModeHTML, LinkPreviewOptions: linkPreviewOptions(true)})
 }
 
 func startHandler(_ context.Context, _ *tglib.Bot, update *models.Update) {
@@ -333,7 +318,7 @@ func SendMessageData(chatID int64, data common.MessageData) error {
 	var err error
 
 	for _, msg := range data.Messages {
-		err = SendHtmlMessageWithPictures(chatID, msg.Text, msg.Images)
+		err = SendHtmlMessageWithPictures(chatID, msg.Text, msg.Images, msg.ShowPreview)
 		if err != nil {
 			return err
 		}

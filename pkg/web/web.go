@@ -9,11 +9,9 @@ import (
 
 func configHandler() string {
 	return ` {
-		"start": "/menu",
-		"buttons_header": "Выберите пункт меню ↓",
-		"actions_url": "/actions",
-		"actions_interval": 10
-
+	"start": "/menu",
+	"buttons_header": "Выберите пункт меню ↓",
+	"actions": [{"url": "/actions", "interval": 10}]
 }`
 
 }

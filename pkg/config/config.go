@@ -106,6 +106,8 @@ func fetchRemoteConfig(configUrl string, configToken string, botToken string) er
 	conf.QueueUrl = result.Response.QueueUrl
 	conf.ActionsUrl = result.Response.ActionsUrl
 
+	conf.Actions = result.Response.Actions
+
 	conf.ButtonsHeader = result.Response.ButtonsHeader
 	conf.StartUrl = result.Response.StartUrl
 	conf.ApiToken = configToken
