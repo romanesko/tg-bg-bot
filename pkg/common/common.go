@@ -3,10 +3,47 @@ package common
 import (
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/go-telegram/bot/models"
 	"log"
+	"regexp"
+	"strings"
 )
 
 var userContext = make(map[int64]*MessageData)
+var UserInfoMap = make(map[int64]*UserInfo)
+
+type UserInfo struct {
+	FirstName string
+	LastName  string
+	Username  string
+	Start     string
+}
+
+func SetUserInfo(chat *models.Chat) {
+	var u = &UserInfo{}
+	u.FirstName = chat.FirstName
+	u.LastName = chat.LastName
+	u.Username = chat.Username
+	UserInfoMap[chat.ID] = u
+}
+
+func SetUserStartCommandParams(chatId int64, start string) {
+	if UserInfoMap[chatId] == nil {
+		log.Printf("FAILED to set referral for missing chatId in UserInfoMap %d\n", chatId)
+		return
+	}
+
+	UserInfoMap[chatId].Start = start
+
+}
+
+func GetUserInfo(userId int64) UserInfo {
+	var ui = UserInfoMap[userId]
+	if ui == nil {
+		return UserInfo{}
+	}
+	return *ui
+}
 
 func SetUserContext(userId int64, contextValue *MessageData) {
 	FuncLog("SetUserContext", userId, contextValue)
@@ -31,4 +68,31 @@ func ErrorLog(s any) {
 	color.Set(color.FgRed)
 	log.Printf("✖ %s\n", s)
 	color.Unset()
+}
+
+func RemoveUnwantedTags(input string) string {
+	allowedTags := `(?i)(&lt;\/?(b|strong|i|em|u|ins|s|strike|del|a|code|pre)\b[^&]*&gt;)`
+
+	escaped := strings.ReplaceAll(input, "<", "&lt;")
+	escaped = strings.ReplaceAll(escaped, ">", "&gt;")
+
+	re := regexp.MustCompile(allowedTags)
+
+	// Revert allowed tags back to their original form
+	result := re.ReplaceAllStringFunc(escaped, func(tag string) string {
+		tag = strings.ReplaceAll(tag, "&lt;", "<")
+		tag = strings.ReplaceAll(tag, "&gt;", ">")
+		return tag
+	})
+
+	return result
+}
+
+func Contains[T comparable](slice []T, value T) bool {
+	for _, v := range slice {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }

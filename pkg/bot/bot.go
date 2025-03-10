@@ -3,12 +3,14 @@ package botlogic
 import (
 	"bodygraph-bot/pkg/common"
 	"bodygraph-bot/pkg/config"
+	"bodygraph-bot/pkg/kvstore"
 	"context"
 	"encoding/json"
 	"fmt"
 	tglib "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/go-telegram/ui/keyboard/inline"
+	"github.com/google/uuid"
 	"log"
 	"os"
 	"os/signal"
@@ -21,12 +23,14 @@ var BotInstance *tglib.Bot
 type MessageButton struct {
 	Label string
 	Data  string
+	Link  string
 }
 
-func NewButton(label string, data string) MessageButton {
+func NewButton(label string, data string, link string) MessageButton {
 	return MessageButton{
 		Label: label,
 		Data:  data,
+		Link:  link,
 	}
 }
 
@@ -36,7 +40,7 @@ func Init() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	telegramBotToken := cfg.Bot.Token
+	telegramBotToken := cfg.BotToken
 
 	opts := []tglib.Option{
 		tglib.WithDefaultHandler(defaultHandler),
@@ -50,9 +54,18 @@ func Init() {
 	}
 	println("Bot instance created", BotInstance)
 
-	BotInstance.RegisterHandler(tglib.HandlerTypeMessageText, "/start", tglib.MatchTypeExact, startHandler)
+	BotInstance.RegisterHandler(tglib.HandlerTypeMessageText, "/start", tglib.MatchTypePrefix, startHandler)
+
+	if cfg.QueueUrl != "" && cfg.QueueInterval > 0 {
+		go CheckMessagesToSend(cfg.QueueUrl, cfg.QueueInterval)
+	}
+
+	if cfg.ActionsUrl != "" && cfg.ActionsInterval > 0 {
+		go CheckActionsToProcess(cfg.ActionsUrl, cfg.ActionsInterval)
+	}
 
 	BotInstance.Start(ctx)
+
 }
 
 func BotIsRunning() bool {
@@ -111,6 +124,8 @@ func SendHtmlMessageWithPictures(chatID int64, msg string, images []string) erro
 	common.FuncLog("SendHtmlMessageWithPictures", chatID, msg)
 	//common.SetUserContext(chatID, nil)
 
+	msg = common.RemoveUnwantedTags(msg)
+
 	if len(images) == 0 {
 		return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ParseMode: models.ParseModeHTML})
 	}
@@ -144,32 +159,101 @@ func DeleteMessage(chatID int64, messageID int) error {
 func SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][]MessageButton, callback *common.MessageData) error {
 	common.SetUserContext(chatID, callback)
 
+	msg = common.RemoveUnwantedTags(msg)
+
+	var keyboard [][]models.InlineKeyboardButton
+	for _, row := range buttons {
+		var keyboardRow []models.InlineKeyboardButton
+		for _, btn := range row {
+
+			key := uuid.New().String()
+
+			err := kvstore.Write(key, btn.Data, 60*60*24) // 24hrs
+			if err != nil {
+				return err
+			}
+
+			if btn.Link != "" {
+				keyboardRow = append(keyboardRow, models.InlineKeyboardButton{
+					Text: btn.Label,
+					URL:  btn.Link,
+				})
+			} else {
+				keyboardRow = append(keyboardRow, models.InlineKeyboardButton{
+					Text:         btn.Label,
+					CallbackData: key,
+				})
+			}
+
+		}
+		keyboard = append(keyboard, keyboardRow)
+	}
+
+	markup := &models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+
+	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ReplyMarkup: markup, ParseMode: models.ParseModeHTML})
+}
+
+func _SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][]MessageButton, callback *common.MessageData) error {
+	common.SetUserContext(chatID, callback)
+
+	msg = common.RemoveUnwantedTags(msg)
+
 	rm := inline.New(BotInstance)
+
 	for _, row := range buttons {
 		rm = rm.Row()
 		for _, button := range row {
-			rm.Button(button.Label, []byte(button.Data), OnInlineKeyboardSelect)
+
+			if button.Link != "" {
+				rm.Button(button.Label, []byte(button.Link), OnInlineKeyboardSelect)
+			} else {
+
+				rm.Button(button.Label, []byte(button.Data), OnInlineKeyboardSelect)
+			}
+
 		}
 	}
+
 	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ReplyMarkup: rm, ParseMode: models.ParseModeHTML})
 }
 
 func startHandler(_ context.Context, _ *tglib.Bot, update *models.Update) {
 	common.FuncLog("startHandler")
-	err := SendStartMessage(update.Message.Chat.ID)
+
+	chatId := update.Message.Chat.ID
+
+	var startParams = ""
+
+	if strings.Contains(update.Message.Text, " ") {
+		startParams = strings.TrimPrefix(update.Message.Text, "/start ")
+	}
+
+	common.SetUserInfo(&update.Message.Chat)
+	common.SetUserStartCommandParams(chatId, startParams)
+
+	err := SendStartMessage(chatId)
 	if err != nil {
-		_ = SendErrorMessage(update.Message.Chat.ID, err)
+		_ = SendErrorMessage(chatId, err)
 	}
 }
 
 func defaultHandler(_ context.Context, _ *tglib.Bot, update *models.Update) {
 
 	if update.Message == nil {
-		log.Println("update.Message is nil")
+		if update.CallbackQuery == nil {
+			log.Println("message is nil and callbackQuery is nil")
+			return
+		}
+
+		data := []byte(kvstore.Read(update.CallbackQuery.Data))
+		OnInlineKeyboardSelect2(update.CallbackQuery.Message, data)
+
 		return
 	}
 
 	chatID := update.Message.Chat.ID
+	common.SetUserInfo(&update.Message.Chat)
 
 	common.FuncLog("defaultHandler", update.Message.Text)
 
@@ -203,9 +287,14 @@ func defaultHandler(_ context.Context, _ *tglib.Bot, update *models.Update) {
 }
 
 func OnInlineKeyboardSelect(_ context.Context, _ *tglib.Bot, mes models.MaybeInaccessibleMessage, data []byte) {
-	common.FuncLog("OnInlineKeyboardSelect")
 
+	OnInlineKeyboardSelect2(mes, data)
+}
+
+func OnInlineKeyboardSelect2(mes models.MaybeInaccessibleMessage, data []byte) {
+	common.FuncLog("OnInlineKeyboardSelect")
 	chatId := mes.Message.Chat.ID
+	common.SetUserInfo(&mes.Message.Chat)
 	userContext := common.GetUserContext(chatId)
 
 	if userContext == nil {
@@ -243,9 +332,7 @@ func SendMessageData(chatID int64, data common.MessageData) error {
 	common.FuncLog("SendMessageData", chatID, data)
 	var err error
 
-	for idx, msg := range data.Messages {
-		fmt.Printf("idx: %d, len: %d\n", idx, len(data.Messages))
-
+	for _, msg := range data.Messages {
 		err = SendHtmlMessageWithPictures(chatID, msg.Text, msg.Images)
 		if err != nil {
 			return err
@@ -253,7 +340,7 @@ func SendMessageData(chatID int64, data common.MessageData) error {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	buttons, err := makeButtonsFromMenuItems(data.Buttons)
+	buttons, err := makeButtonsFromMenuItems(data.Buttons, data.ButtonsRows)
 	if err != nil {
 		return err
 	}
@@ -261,7 +348,7 @@ func SendMessageData(chatID int64, data common.MessageData) error {
 	cfg := config.GetConfig()
 
 	if data.ButtonsHeader == "" {
-		data.ButtonsHeader = cfg.Settings.ButtonsHeader
+		data.ButtonsHeader = cfg.ButtonsHeader
 	}
 
 	if len(data.Buttons) > 0 {
@@ -272,4 +359,28 @@ func SendMessageData(chatID int64, data common.MessageData) error {
 	}
 
 	return nil
+}
+
+func CheckUserInChannel(userId int64, channelName string) bool {
+	ctx := context.Background()
+	chatInfo, err := BotInstance.GetChat(ctx, &tglib.GetChatParams{ChatID: channelName})
+	if err != nil {
+		log.Printf("ERROR: CheckUserInChannel.GetChat: %f\n", err)
+		return false
+	}
+
+	log.Printf("Checking user %d in chanel %s", userId, chatInfo.Title)
+
+	info, err := BotInstance.GetChatMember(ctx, &tglib.GetChatMemberParams{
+		ChatID: chatInfo.ID,
+		UserID: userId,
+	})
+
+	if err != nil {
+		log.Printf("ERROR: CheckUserInChannel.GetChatMember: %f\n", err)
+		return false
+	}
+
+	return info.Type == "member" || info.Type == "creator"
+
 }

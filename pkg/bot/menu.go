@@ -4,7 +4,6 @@ import (
 	"bodygraph-bot/pkg/api"
 	"bodygraph-bot/pkg/common"
 	"bodygraph-bot/pkg/config"
-	"bodygraph-bot/pkg/repo"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,25 +11,41 @@ import (
 
 func SendStartMessage(chatID int64) error {
 	common.FuncLog("SendStartMessage", chatID)
-	api.RefreshConfig()
-
-	cfg := config.GetConfig()
-
-	var menuItem = common.MenuItem{URL: cfg.Api.StartUrl, Label: "main menu"}
+	conf := config.GetConfig()
+	var menuItem = common.MenuItem{URL: conf.StartUrl, Label: "main menu"}
 	return processOuter(chatID, &menuItem)
 
 }
 
-func makeButtonsFromMenuItems(items []common.MenuItem) ([][]MessageButton, error) {
+func makeButtonsFromMenuItems(items []common.MenuItem, buttonsRows *[]int) ([][]MessageButton, error) {
 	common.FuncLog("makeButtonsFromMenuItems")
 
 	var buttons [][]MessageButton
-	for _, button := range items {
-		hashData, err := button.ToJson()
-		if err != nil {
-			return buttons, err
+
+	if buttonsRows == nil || len(*buttonsRows) == 0 {
+		for _, button := range items {
+			hashData, err := button.ToJson()
+			if err != nil {
+				return buttons, err
+			}
+			buttons = append(buttons, []MessageButton{NewButton(button.Label, hashData, button.Link)})
 		}
-		buttons = append(buttons, []MessageButton{NewButton(button.Label, hashData)})
+	} else {
+		currentRow := 0
+		buttons = make([][]MessageButton, len(*buttonsRows))
+		log.Println("MenuItem", items)
+		log.Println("buttonsRows", *buttonsRows)
+		for idx, button := range items {
+			hashData, err := button.ToJson()
+			if err != nil {
+				return buttons, err
+			}
+			if common.Contains(*buttonsRows, idx) {
+				buttons = append(buttons, make([]MessageButton, 0))
+				currentRow++
+			}
+			buttons[currentRow] = append(buttons[currentRow], NewButton(button.Label, hashData, button.Link))
+		}
 	}
 	return buttons, nil
 }
@@ -49,21 +64,28 @@ func sendRequest(tgChatId int64, url string, params interface{}) error {
 		return SendMessageData(tgChatId, resp.Response)
 	}
 
-	sentMessage, err := SendRawMessage(tgChatId, fmt.Sprintf("Запрос отправлен, ожидайте ответа"))
-	if err != nil {
-		return err
-	}
-	return repo.AddTask(int(tgChatId), url, params, sentMessage.ID)
+	_, _ = SendRawMessage(tgChatId, fmt.Sprintf("Запрос отправлен, ожидайте ответа"))
+	return nil
+
+	//sentMessage, err := SendRawMessage(tgChatId, fmt.Sprintf("Запрос отправлен, ожидайте ответа"))
+	//if err != nil {
+	//	return err
+	//}
+	//return repo.AddTask(int(tgChatId), url, params, sentMessage.ID)
+
 }
 
 func processOuter(chatId int64, menuItem *common.MenuItem) error {
 	common.FuncLog("processOuter", chatId, menuItem.Label)
 	log.Println(menuItem)
 
-	js, err := contextToJson(&api.Request{TgChatId: chatId, Context: menuItem.Context})
+	userInfo := common.GetUserInfo(chatId)
+
+	js, err := contextToJson(&api.Request{TgChatId: chatId, UserInfo: userInfo, Context: menuItem.Context})
 	if err != nil {
 		return err
 	}
+
 	return sendRequest(chatId, menuItem.URL, js)
 
 }
