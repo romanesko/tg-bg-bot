@@ -190,8 +190,8 @@ func SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][
 	}
 
 	markup := &models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
-
-	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ReplyMarkup: markup, ParseMode: models.ParseModeHTML})
+	previewDisabled := true
+	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ReplyMarkup: markup, ParseMode: models.ParseModeHTML, LinkPreviewOptions: &models.LinkPreviewOptions{IsDisabled: &previewDisabled}})
 }
 
 func _SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][]MessageButton, callback *common.MessageData) error {

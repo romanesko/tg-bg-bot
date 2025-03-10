@@ -39,7 +39,7 @@ func _menuHandler() string {
       {"label": "Четыре", "url": "https://absplute-url-to-next-action"},
 	  {"label": "Пять", "url": "/relative-url-to-next-action"},
       {"label": "Шесть", "url": "https://absplute-url-to-next-action"},
-	{"label": "Ссылка на внешний ресурс", "link": "https://ya.ru"}
+      {"label": "Ссылка на внешний ресурс", "link": "https://ya.ru"}
     ],
 	"buttons_rows": [2,5]
 
@@ -48,14 +48,21 @@ func _menuHandler() string {
 
 func menuHandler() string {
 	return `{
-
+	"messages": [
+      {
+        "text": "https://avatars.mds.yandex.net/i?id=f0f808924f403eecf559ccb0e5d74996_l-5228318-images-thumbs&n=13"
+      }],
     "buttons_header": "Куда дальше?",
     "buttons": [
-    
-      {"label": "Шесть", "url": "/subitem"},
-	{"label": "Ссылка на внешний ресурс", "link": "https://ya.ru"}
-    ]
-
+      {"label": "Один", "url": "/subitem"}, 
+      {"label": "Два", "url": "https://absplute-url-to-next-action"},
+	  {"label": "Три", "url": "/relative-url-to-next-action"},
+      {"label": "Четыре", "url": "https://absplute-url-to-next-action"},
+	  {"label": "Пять", "url": "/relative-url-to-next-action"},
+      {"label": "Шесть", "url": "https://absplute-url-to-next-action"},
+      {"label": "Ссылка на внешний ресурс", "link": "https://ya.ru"}
+    ],
+	"buttons_rows": [2,5]
   }`
 }
 

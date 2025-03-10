@@ -32,7 +32,7 @@ func makeButtonsFromMenuItems(items []common.MenuItem, buttonsRows *[]int) ([][]
 		}
 	} else {
 		currentRow := 0
-		buttons = make([][]MessageButton, len(*buttonsRows))
+		buttons = make([][]MessageButton, 1)
 		log.Println("MenuItem", items)
 		log.Println("buttonsRows", *buttonsRows)
 		for idx, button := range items {
