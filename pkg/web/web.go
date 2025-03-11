@@ -16,23 +16,30 @@ func configHandler() string {
 
 }
 
-func _menuHandler() string {
+func menuHandler() string {
 	return `{
     "messages": [
       {
         "text": "Первое сообщение"
       },
       {
-        "text": "Второе сообщение",
+        "text": "Второе сообщение с картинкой",
         "images": [
           "https://render.fineartamerica.com/images/rendered/default/print/5.5/8/break/images/artworkimages/medium/2/naked-ass-necklace-gene-oryx.jpg", "https://avatars.mds.yandex.net/i?id=f0f808924f403eecf559ccb0e5d74996_l-5228318-images-thumbs&n=13"
         ]
-      }
+      },
+      {
+		"text": "Ссылка без превью: https://ya.ru"
+		},
+ {
+		"text": "Ссылка с превью: https://ya.ru",
+		"show_preview": true
+		}
     ],
     "buttons_header": "Куда дальше?",
     "buttons": [
       {"label": "Один", "url": "/subitem"}, 
-      {"label": "Два", "url": "https://absplute-url-to-next-action"},
+      {"label": "Два", "url": "/subitem2"}, 
 	  {"label": "Три", "url": "/relative-url-to-next-action"},
       {"label": "Четыре", "url": "https://absplute-url-to-next-action"},
 	  {"label": "Пять", "url": "/relative-url-to-next-action"},
@@ -44,7 +51,7 @@ func _menuHandler() string {
   }`
 }
 
-func menuHandler() string {
+func _menuHandler() string {
 	return `{
 	"messages": [
       {
@@ -87,6 +94,19 @@ func subItem() string {
     `
 }
 
+func subItem2() string {
+	return `{
+        "messages": [
+            {
+                "text": "<b>Детали бодиграфа<\/b>\n\n1981-04-09 08:45:00, Москва, Россия\n\nТип: Проектор\n\nПрофиль: 5\\1 - Еретик\\Исследователь\n\nАвторитет: Селезеночный\n\nОпределенность: Цельная\n\nИнкарнационный крест: Горна (Глашатая) 1 ( 51\/57 | 61\/62 )\n\nПеременные: PLL-DLRКартинка: https:\/\/bodygraph.online\/bodygraphs\/67cf78c7dacd20.45447969.png",
+                "images": [
+                    "https://bodygraph.online/bodygraphs/67cf78c7dacd20.45447969.png"
+                ]
+            }
+        ]
+    }`
+}
+
 func actionsHandler() string {
 	return `{
     "check_user_in_channel": [
@@ -104,6 +124,7 @@ func Init() {
 	http.HandleFunc("/menu", handlerWrapper(menuHandler))
 	http.HandleFunc("/actions", handlerWrapper(actionsHandler))
 	http.HandleFunc("/subitem", handlerWrapper(subItem))
+	http.HandleFunc("/subitem2", handlerWrapper(subItem2))
 
 	// Запуск сервера на порту 8080
 	fmt.Println("Starting server at port 8080")

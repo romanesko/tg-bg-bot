@@ -1,6 +1,9 @@
 package common
 
 import (
+	"bodygraph-bot/pkg/kvstore"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/go-telegram/bot/models"
@@ -47,11 +50,41 @@ func GetUserInfo(userId int64) UserInfo {
 
 func SetUserContext(userId int64, contextValue *MessageData) {
 	FuncLog("SetUserContext", userId, contextValue)
+
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	err := encoder.Encode(contextValue)
+	if err != nil {
+		log.Printf("Encoding error: %v", err)
+		return
+	}
+
+	kvstore.Write(fmt.Sprintf("USER:%d", userId), buffer.Bytes(), 60*60*24*30)
+
 	userContext[userId] = contextValue
 }
 
 func GetUserContext(userId int64) *MessageData {
-	return userContext[userId]
+
+	serializedData := kvstore.Read(fmt.Sprintf("USER:%d", userId))
+	if serializedData == nil {
+		return nil
+	}
+
+	var buffer bytes.Buffer
+
+	buffer = *bytes.NewBuffer(serializedData) // Recreate buffer from bytes
+	var decoded MessageData
+	decoder := gob.NewDecoder(&buffer)
+	err := decoder.Decode(&decoded)
+
+	if err != nil {
+		log.Printf("Decoding error: %v", err)
+	}
+
+	return &decoded
+
+	//return userContext[userId]
 }
 
 func FuncLog(s ...any) {

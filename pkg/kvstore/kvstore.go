@@ -48,17 +48,17 @@ func initDB() {
 
 // Write stores a key-value pair with an optional TTL (in seconds).
 // If ttlSeconds is 0, the key persists indefinitely.
-func Write(key, value string, ttlSeconds uint32) error {
+func Write(key string, value []byte, ttlSeconds uint32) error {
 	initDB()
 	return db.Update(func(tx *nutsdb.Tx) error {
-		return tx.Put(bucket, []byte(key), []byte(value), ttlSeconds)
+		return tx.Put(bucket, []byte(key), value, ttlSeconds)
 	})
 }
 
 // Read retrieves the value for a key, returning "" if the key doesn't exist or has expired.
-func Read(key string) string {
+func Read(key string) []byte {
 	initDB()
-	var value string
+	var value []byte
 	err := db.View(func(tx *nutsdb.Tx) error {
 		entry, err := tx.Get(bucket, []byte(key))
 		if err != nil {
@@ -67,12 +67,12 @@ func Read(key string) string {
 			}
 			return err
 		}
-		value = string(entry)
+		value = entry
 		return nil
 	})
 	if err != nil {
 		log.Printf("Error reading key %s: %v", key, err)
-		return ""
+		return nil
 	}
 	return value
 }

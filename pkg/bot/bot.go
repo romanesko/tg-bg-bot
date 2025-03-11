@@ -141,7 +141,13 @@ func SendHtmlMessageWithPictures(chatID int64, msg string, images []string, show
 	}
 
 	for i := range images {
-		photo := &models.InputFileString{Data: images[i]}
+
+		imageName, err := common.EncodeFilenameDots(images[i])
+		if err != nil {
+			return err
+		}
+
+		photo := &models.InputFileString{Data: imageName}
 		if i == len(images)-1 {
 
 			return sendImage(tglib.SendPhotoParams{ChatID: chatID, Caption: msg, ParseMode: models.ParseModeHTML, Photo: photo})
@@ -178,7 +184,9 @@ func SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][
 
 			key := uuid.New().String()
 
-			err := kvstore.Write(key, btn.Data, 60*60*24) // 24hrs
+			bytes := []byte(btn.Data)
+
+			err := kvstore.Write(key, bytes, 60*60*24) // 24hrs
 			if err != nil {
 				return err
 			}
@@ -231,7 +239,7 @@ func defaultHandler(_ context.Context, _ *tglib.Bot, update *models.Update) {
 			return
 		}
 
-		data := []byte(kvstore.Read(update.CallbackQuery.Data))
+		data := kvstore.Read(update.CallbackQuery.Data)
 		OnInlineKeyboardSelect2(update.CallbackQuery.Message, data)
 
 		return
