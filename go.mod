@@ -5,9 +5,9 @@ go 1.22
 require (
 	github.com/fatih/color v1.17.0
 	github.com/go-telegram/bot v1.14.0
-	github.com/go-telegram/ui v0.3.2
 	github.com/google/uuid v1.6.0
 	github.com/nutsdb/nutsdb v1.0.4
+	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 	gopkg.in/yaml.v3 v3.0.1
 )
 

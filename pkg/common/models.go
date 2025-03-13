@@ -39,26 +39,40 @@ type Action struct {
 }
 
 type ConfResponseResponse struct {
-	StartUrl        string   `json:"start"`
-	ButtonsHeader   string   `json:"buttons_header"`
-	QueueUrl        string   `json:"queue_url"`
-	QueueInterval   int      `json:"queue_interval"`
-	ActionsUrl      string   `json:"actions_url"`
-	Actions         []Action `json:"actions"`
-	ActionsInterval int      `json:"actions_interval"`
+	StartUrl              string    `json:"start"`
+	ButtonsHeader         string    `json:"buttons_header"`
+	QueueUrl              string    `json:"queue_url"`
+	QueueInterval         int       `json:"queue_interval"`
+	ActionsUrl            string    `json:"actions_url"`
+	Actions               []Action  `json:"actions"`
+	ActionsInterval       int       `json:"actions_interval"`
+	Commands              []Command `json:"commands"`
+	ContextTTL            *uint32   `json:"context_ttl_days"`
+	ContextMissingMessage string    `json:"no_context_message"`
+	AdminPassword         string    `json:"admin_password"`
+}
+
+type Command struct {
+	Command     string `json:"command"`
+	Description string `json:"description"`
+	Url         string `json:"url"`
 }
 
 type Config struct {
-	BotToken        string
-	ApiToken        string
-	BaseUrl         string
-	StartUrl        string
-	ButtonsHeader   string
-	QueueUrl        string
-	QueueInterval   int
-	ActionsUrl      string
-	Actions         []Action
-	ActionsInterval int
+	BotToken              string
+	ApiToken              string
+	BaseUrl               string
+	StartUrl              string
+	ButtonsHeader         string
+	QueueUrl              string
+	QueueInterval         int
+	ActionsUrl            string
+	Actions               []Action
+	ActionsInterval       int
+	Commands              []Command
+	ContextTTL            uint32
+	ContextMissingMessage string
+	AdminPassword         string
 }
 
 type Menu struct {
@@ -108,6 +122,7 @@ type ActionsCheckUserInChannel struct {
 	TgChatID  int64  `json:"tg_chat_id"`
 	TgChannel string `json:"tg_channel_name"`
 	Exists    bool   `json:"exists"`
+	State     string `json:"state"`
 }
 
 type ActionsDTO struct {

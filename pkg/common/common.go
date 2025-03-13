@@ -8,6 +8,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/go-telegram/bot/models"
 	"log"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -50,6 +51,11 @@ func GetUserInfo(userId int64) UserInfo {
 
 func SetUserContext(userId int64, contextValue *MessageData) {
 	FuncLog("SetUserContext", userId, contextValue)
+
+	if contextValue == nil {
+		kvstore.Write(fmt.Sprintf("USER:%d", userId), nil, 60*60*24*30)
+		return
+	}
 
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
@@ -128,4 +134,28 @@ func Contains[T comparable](slice []T, value T) bool {
 		}
 	}
 	return false
+}
+
+func SetUserAdmin(chatId int64, admin bool) {
+	if admin {
+		kvstore.Write(fmt.Sprintf("ADMIN:%d", chatId), []byte("1"), 0)
+
+	} else {
+		kvstore.Write(fmt.Sprintf("ADMIN:%d", chatId), nil, 0)
+	}
+}
+
+func IsUserAdmin(chatId int64) bool {
+	return kvstore.Read(fmt.Sprintf("ADMIN:%d", chatId)) != nil
+}
+
+func IsDebug() bool {
+	return os.Getenv("DEBUG") != ""
+}
+
+func UnwrapError(err error) string {
+	var msg = fmt.Sprintf("%v", err)
+	msg = strings.Replace(msg, "bad request,", "", -1)
+	msg = strings.Replace(msg, "Bad Request:", "", -1)
+	return strings.TrimSpace(msg)
 }

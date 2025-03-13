@@ -17,40 +17,37 @@ func SendStartMessage(chatID int64) error {
 
 }
 
-func makeButtonsFromMenuItems(items []common.MenuItem, buttonsRows *[]int) ([][]MessageButton, error) {
+func makeButtonsFromMenuItems(items []common.MenuItem, buttonsRows *[]int) ([][]common.MenuItem, error) {
 	common.FuncLog("makeButtonsFromMenuItems")
 
-	var buttons [][]MessageButton
+	var buttons [][]common.MenuItem
 
 	if buttonsRows == nil || len(*buttonsRows) == 0 {
 		for _, button := range items {
-			hashData, err := button.ToJson()
-			if err != nil {
-				return buttons, err
-			}
-			buttons = append(buttons, []MessageButton{NewButton(button.Label, hashData, button.Link)})
+			//hashData, err := button.ToJson()
+			//if err != nil {
+			//	return buttons, err
+			//}
+			buttons = append(buttons, []common.MenuItem{button})
 		}
 	} else {
 		currentRow := 0
-		buttons = make([][]MessageButton, 1)
+		buttons = make([][]common.MenuItem, 1)
 		log.Println("MenuItem", items)
 		log.Println("buttonsRows", *buttonsRows)
 		for idx, button := range items {
-			hashData, err := button.ToJson()
-			if err != nil {
-				return buttons, err
-			}
 			if common.Contains(*buttonsRows, idx) {
-				buttons = append(buttons, make([]MessageButton, 0))
+				buttons = append(buttons, make([]common.MenuItem, 0))
 				currentRow++
 			}
-			buttons[currentRow] = append(buttons[currentRow], NewButton(button.Label, hashData, button.Link))
+			buttons[currentRow] = append(buttons[currentRow], button)
 		}
 	}
 	return buttons, nil
 }
 
 func sendRequest(tgChatId int64, url string, params interface{}) error {
+
 	common.FuncLog("sendRequest", tgChatId, url, params)
 	resp, err := api.FetchUrl(url, params)
 	if err != nil {
@@ -67,12 +64,6 @@ func sendRequest(tgChatId int64, url string, params interface{}) error {
 	_, _ = SendRawMessage(tgChatId, fmt.Sprintf("Запрос отправлен, ожидайте ответа"))
 	return nil
 
-	//sentMessage, err := SendRawMessage(tgChatId, fmt.Sprintf("Запрос отправлен, ожидайте ответа"))
-	//if err != nil {
-	//	return err
-	//}
-	//return repo.AddTask(int(tgChatId), url, params, sentMessage.ID)
-
 }
 
 func processOuter(chatId int64, menuItem *common.MenuItem) error {
@@ -86,8 +77,10 @@ func processOuter(chatId int64, menuItem *common.MenuItem) error {
 		return err
 	}
 
-	return sendRequest(chatId, menuItem.URL, js)
-
+	if err = sendRequest(chatId, menuItem.URL, js); err != nil {
+		return &CustomError{ChatID: chatId, URL: menuItem.URL, Params: js, Err: err}
+	}
+	return nil
 }
 
 func processOuterText(chatId int64, text string, callback common.TextCallback) error {
@@ -96,7 +89,11 @@ func processOuterText(chatId int64, text string, callback common.TextCallback) e
 	if err != nil {
 		return err
 	}
-	return sendRequest(chatId, callback.Url, js)
+
+	if err = sendRequest(chatId, callback.Url, js); err != nil {
+		return &CustomError{ChatID: chatId, URL: callback.Url, Params: js, Err: err}
+	}
+	return nil
 }
 
 func contextToJson(request *api.Request) (map[string]any, error) {

@@ -4,8 +4,11 @@ import (
 	"bodygraph-bot/pkg/common"
 	"bodygraph-bot/pkg/config"
 	"bodygraph-bot/pkg/kvstore"
+	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	tglib "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -19,19 +22,19 @@ import (
 
 var BotInstance *tglib.Bot
 
-type MessageButton struct {
-	Label string
-	Data  string
-	Link  string
-}
+//type MessageButton struct {
+//	Label string
+//	Data  string
+//	Link  string
+//}
 
-func NewButton(label string, data string, link string) MessageButton {
-	return MessageButton{
-		Label: label,
-		Data:  data,
-		Link:  link,
-	}
-}
+//func NewButton(label string, data string, link string) MessageButton {
+//	return MessageButton{
+//		Label: label,
+//		Data:  data,
+//		Link:  link,
+//	}
+//}
 
 func Init() {
 
@@ -69,12 +72,24 @@ func Init() {
 		}
 	}
 
+	if cfg.Commands != nil {
+		commands := make([]models.BotCommand, len(cfg.Commands))
+		for idx, command := range cfg.Commands {
+			commands[idx] = models.BotCommand{
+				Command:     command.Command,
+				Description: command.Description,
+			}
+		}
+		_, err = BotInstance.SetMyCommands(context.Background(), &tglib.SetMyCommandsParams{
+			Commands: commands,
+		})
+		if err != nil {
+			log.Fatal("Failed to set commands:", err)
+		}
+	}
+
 	BotInstance.Start(ctx)
 
-}
-
-func BotIsRunning() bool {
-	return BotInstance != nil
 }
 
 func sendImage(params tglib.SendPhotoParams) error {
@@ -99,12 +114,52 @@ func sendMessage(params tglib.SendMessageParams) error {
 	return nil
 }
 
+type ErrorWithContext struct {
+	ChatID  int64
+	Request string
+	Params  interface{}
+	Err     error
+}
+
+func (e *ErrorWithContext) Error() string {
+	return fmt.Sprintf("code %d: %v", e.Request, e.Err)
+}
+
+func (e *ErrorWithContext) Unwrap() error {
+	return e.Err
+}
+
 func SendErrorMessage(chatID int64, err error) error {
 	if err == nil {
 		return nil
 	}
 	common.ErrorLog(err)
-	return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: fmt.Sprintf("Error: %s", err.Error())})
+
+	if common.IsUserAdmin(chatID) {
+
+		var customErr *CustomError
+		if errors.As(err, &customErr) {
+
+			params, err := json.MarshalIndent(customErr.Params, "", "  ")
+			if err != nil {
+				return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: fmt.Sprintf("Error: %s", err.Error())})
+			}
+
+			msg := fmt.Sprintf("ChatId:\n<code>%d</code>\n\nURL:\n<code>%s</code>\n\n<pre>%s</pre>\n\nError:\n<b>%s</b>", customErr.ChatID, customErr.URL, common.RemoveUnwantedTags(string(params)), common.RemoveUnwantedTags(customErr.Err.Error()))
+
+			sendErr := sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: msg, ParseMode: models.ParseModeHTML})
+			if sendErr != nil {
+				return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: fmt.Sprintf("Error: %s", err.Error())})
+			}
+			return nil
+
+		} else {
+			return sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: fmt.Sprintf("Error: %s", err.Error())})
+		}
+	} else {
+		_ = sendMessage(tglib.SendMessageParams{ChatID: chatID, Text: "Что-то пошло не так. Мы уже разбираемся с этим"})
+		return SendStartMessage(chatID)
+	}
 
 }
 
@@ -172,9 +227,10 @@ func DeleteMessage(chatID int64, messageID int) error {
 	return nil
 }
 
-func SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][]MessageButton, callback *common.MessageData) error {
+func SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][]common.MenuItem, callback *common.MessageData) error {
 	common.SetUserContext(chatID, callback)
 
+	conf := config.GetConfig()
 	msg = common.RemoveUnwantedTags(msg)
 
 	var keyboard [][]models.InlineKeyboardButton
@@ -184,9 +240,15 @@ func SendHtmlMessageMessageWithReplyMarkup(chatID int64, msg string, buttons [][
 
 			key := uuid.New().String()
 
-			bytes := []byte(btn.Data)
+			var buffer bytes.Buffer
+			encoder := gob.NewEncoder(&buffer)
+			err := encoder.Encode(btn)
+			if err != nil {
+				log.Printf("Encoding error: %v", err)
+				return err
+			}
 
-			err := kvstore.Write(key, bytes, 60*60*24) // 24hrs
+			err = kvstore.Write(key, buffer.Bytes(), 60*60*24*conf.ContextTTL) // 24hrs
 			if err != nil {
 				return err
 			}
@@ -239,8 +301,9 @@ func defaultHandler(_ context.Context, _ *tglib.Bot, update *models.Update) {
 			return
 		}
 
-		data := kvstore.Read(update.CallbackQuery.Data)
-		OnInlineKeyboardSelect2(update.CallbackQuery.Message, data)
+		serializedData := kvstore.Read(update.CallbackQuery.Data)
+
+		OnInlineKeyboardSelect(update.CallbackQuery.Message, serializedData)
 
 		return
 	}
@@ -257,8 +320,38 @@ func defaultHandler(_ context.Context, _ *tglib.Bot, update *models.Update) {
 			return
 		}
 		return
-
 	}
+
+	if strings.HasPrefix(update.Message.Text, "/admin") {
+		cfg := config.GetConfig()
+		if cfg.AdminPassword != "" {
+
+			password := strings.TrimPrefix(update.Message.Text, "/admin ")
+
+			if password == cfg.AdminPassword {
+				_ = SendMessage(chatID, "Вы администратор", nil)
+				common.SetUserAdmin(chatID, true)
+				return
+			}
+		}
+	}
+
+	if strings.HasPrefix(update.Message.Text, "/") {
+		cfg := config.GetConfig()
+		if cfg.Commands != nil {
+			for _, command := range cfg.Commands {
+				if strings.HasPrefix(update.Message.Text, command.Command) {
+					err := processOuterText(chatID, update.Message.Text, common.TextCallback{Url: command.Url, Context: nil})
+					if err != nil {
+						_ = SendErrorMessage(chatID, err)
+					}
+					return
+
+				}
+			}
+		}
+	}
+
 	userContext := common.GetUserContext(chatID)
 
 	if userContext == nil {
@@ -279,45 +372,37 @@ func defaultHandler(_ context.Context, _ *tglib.Bot, update *models.Update) {
 
 }
 
-func OnInlineKeyboardSelect(_ context.Context, _ *tglib.Bot, mes models.MaybeInaccessibleMessage, data []byte) {
-
-	OnInlineKeyboardSelect2(mes, data)
-}
-
-func OnInlineKeyboardSelect2(mes models.MaybeInaccessibleMessage, data []byte) {
+func OnInlineKeyboardSelect(mes models.MaybeInaccessibleMessage, serializedData []byte) {
 	common.FuncLog("OnInlineKeyboardSelect")
 	chatId := mes.Message.Chat.ID
 	common.SetUserInfo(&mes.Message.Chat)
-	userContext := common.GetUserContext(chatId)
+	//userContext := common.GetUserContext(chatId)
 
-	if userContext == nil {
-		_ = SendMessage(chatId, "Не понимаю о чём это вы (", nil)
-		_ = SendStartMessage(chatId)
+	if serializedData == nil {
+		_ = SendErrorMessage(chatId, fmt.Errorf(config.GetConfig().ContextMissingMessage))
 		return
 	}
 
-	var selectedButton = common.MenuItem{}
+	var buffer bytes.Buffer
 
-	err := json.Unmarshal(data, &selectedButton)
+	buffer = *bytes.NewBuffer(serializedData) // Recreate buffer from bytes
+	var decoded common.MenuItem
+	decoder := gob.NewDecoder(&buffer)
+	err := decoder.Decode(&decoded)
+
 	if err != nil {
-		_ = SendErrorMessage(mes.Message.Chat.ID, err)
+		log.Printf("Decoding error: %v", err)
+		_ = SendErrorMessage(chatId, fmt.Errorf(config.GetConfig().ContextMissingMessage))
 		return
 	}
 
-	for i := range userContext.Buttons {
-		menuItem := userContext.Buttons[i]
-		if menuItem.Label == selectedButton.Label {
-			log.Println("Pressed button", menuItem)
-			err = processOuter(mes.Message.Chat.ID, &menuItem)
-			if err != nil {
-				_ = SendErrorMessage(mes.Message.Chat.ID, err)
-				return
-			}
-			return
-		}
-	}
+	DeleteMessage(chatId, mes.Message.ID)
 
-	_ = SendErrorMessage(mes.Message.Chat.ID, fmt.Errorf("не найдена кнопка из контекста"))
+	err = processOuter(chatId, &decoded)
+	if err != nil {
+		_ = SendErrorMessage(chatId, err)
+		return
+	}
 
 }
 
@@ -354,15 +439,18 @@ func SendMessageData(chatID int64, data common.MessageData) error {
 	return nil
 }
 
-func CheckUserInChannel(userId int64, channelName string) bool {
+func getChannelByName(channelName string) (*models.ChatFullInfo, error) {
 	ctx := context.Background()
 	chatInfo, err := BotInstance.GetChat(ctx, &tglib.GetChatParams{ChatID: channelName})
 	if err != nil {
-		log.Printf("ERROR: CheckUserInChannel.GetChat: %f\n", err)
-		return false
+		log.Printf("ERROR: Get channel by name «%s»: %s\n", channelName, common.UnwrapError(err))
 	}
+	return chatInfo, err
+}
 
-	log.Printf("Checking user %d in chanel %s", userId, chatInfo.Title)
+func CheckUserInChannel(userId int64, chatInfo models.ChatFullInfo) (bool, string) {
+
+	ctx := context.Background()
 
 	info, err := BotInstance.GetChatMember(ctx, &tglib.GetChatMemberParams{
 		ChatID: chatInfo.ID,
@@ -370,10 +458,12 @@ func CheckUserInChannel(userId int64, channelName string) bool {
 	})
 
 	if err != nil {
-		log.Printf("ERROR: CheckUserInChannel.GetChatMember: %f\n", err)
-		return false
+		log.Printf("ERROR: CHECK USER IN CHANNEL | channel: «%s» | user: %-10d | error: %s\n", chatInfo.Title, userId, common.UnwrapError(err))
+		return false, "check-failed"
 	}
 
-	return info.Type == "member" || info.Type == "creator"
+	log.Printf("CHECK USER IN CHANNEL | channel: «%s» | user: %-9d | state: %s", chatInfo.Title, userId, info.Type)
+
+	return info.Type == "member" || info.Type == "creator", fmt.Sprintf("%s", info.Type)
 
 }

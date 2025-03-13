@@ -4,7 +4,9 @@ import (
 	"bodygraph-bot/pkg/api"
 	"bodygraph-bot/pkg/common"
 	"encoding/json"
+	"github.com/go-telegram/bot/models"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -117,12 +119,44 @@ func fetchActionsUrl(url string) {
 
 	log.Println("items in channel")
 
-	var checked []common.ActionsCheckUserInChannel
+	checked := make([]common.ActionsCheckUserInChannel, len(result.Response.CheckUserInChannel))
+
+	var wg sync.WaitGroup
+	semaphore := make(chan struct{}, 50)
+
+	uniqueChannel := make(map[string]bool)
 
 	for _, item := range result.Response.CheckUserInChannel {
-		item.Exists = CheckUserInChannel(item.TgChatID, item.TgChannel)
-		checked = append(checked, item)
+		uniqueChannel[item.TgChannel] = true
 	}
+
+	channelsMap := make(map[string]models.ChatFullInfo)
+
+	for channelName := range uniqueChannel {
+		if chatInfo, err := getChannelByName(channelName); err == nil {
+			channelsMap[channelName] = *chatInfo
+		}
+	}
+
+	for idx, item := range result.Response.CheckUserInChannel {
+
+		if _, ok := channelsMap[item.TgChannel]; !ok {
+			item.Exists = false
+			item.State = "channel-not-found"
+			checked[idx] = item
+			continue
+		}
+
+		wg.Add(1)
+		semaphore <- struct{}{}
+		go func(index int, it common.ActionsCheckUserInChannel) {
+			defer wg.Done()
+			item.Exists, item.State = CheckUserInChannel(item.TgChatID, channelsMap[item.TgChannel])
+			checked[idx] = item
+			<-semaphore
+		}(idx, item)
+	}
+	wg.Wait()
 
 	checkUserInChannel = checked
 

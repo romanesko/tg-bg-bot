@@ -11,7 +11,9 @@ func configHandler() string {
 	return ` {
 	"start": "/menu",
 	"buttons_header": "Выберите пункт меню ↓",
-	"actions": [{"url": "/actions", "interval": 10}]
+	"actions": [{"url": "/actions", "interval": 10}],
+	"commands" : [{"command": "/start", "description": "Начать с начала"}, {"command":"/balance", "description": "Баланс", "url": "/balance"}],
+	"admin_password": "123456"
 }`
 
 }
@@ -113,9 +115,27 @@ func actionsHandler() string {
       {
         "tg_chat_id": 2042663,
         "tg_channel_name": "@FromCTOtoConsult"
+      },
+      {
+        "tg_chat_id": 217826967,
+        "tg_channel_name": "@FromCTOtoConsult"
+      },
+	{
+        "tg_chat_id": 217826967,
+        "tg_channel_name": "-1002391915441"
       }
     ]
   }`
+}
+
+func balance() string {
+	return `{
+        "messages": [
+            {
+                "text": "Ваш баланс: 1000 рублей"
+            }
+        ]
+    }`
 }
 
 func Init() {
@@ -125,6 +145,7 @@ func Init() {
 	http.HandleFunc("/actions", handlerWrapper(actionsHandler))
 	http.HandleFunc("/subitem", handlerWrapper(subItem))
 	http.HandleFunc("/subitem2", handlerWrapper(subItem2))
+	http.HandleFunc("/balance", handlerWrapper(balance))
 
 	// Запуск сервера на порту 8080
 	fmt.Println("Starting server at port 8080")
@@ -152,7 +173,7 @@ func handlerWrapper(fun func() string) http.HandlerFunc {
 		// Convert the body to a string and print it
 		jsonString := string(body)
 
-		fmt.Printf("TEST API QUERY params: %s, post data: %s\n", params, jsonString)
+		log.Printf("TEST WEB API INCOMING REQUEST :: params: %s, post data: %s\n", params, jsonString)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(resp))

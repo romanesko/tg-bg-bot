@@ -113,6 +113,20 @@ func fetchRemoteConfig(configUrl string, configToken string, botToken string) er
 	conf.ApiToken = configToken
 	conf.BotToken = botToken
 
+	conf.Commands = result.Response.Commands
+
+	conf.ContextTTL = 30
+	if result.Response.ContextTTL != nil {
+		conf.ContextTTL = *result.Response.ContextTTL
+	}
+	conf.ContextMissingMessage = result.Response.ContextMissingMessage
+
+	if conf.ContextMissingMessage == "" {
+		conf.ContextMissingMessage = "Кнопка устарела"
+	}
+
+	conf.AdminPassword = result.Response.AdminPassword
+
 	re := regexp.MustCompile(`(https?://[^/]+)`)
 	match := re.FindStringSubmatch(configUrl)
 	if len(match) > 1 {
