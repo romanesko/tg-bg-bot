@@ -119,10 +119,14 @@ func actionsHandler() string {
       {
         "tg_chat_id": 217826967,
         "tg_channel_name": "@FromCTOtoConsult"
+      },  
+{
+        "tg_chat_id": 1061501189,
+        "tg_channel_name": "@FromCTOtoConsult"
       },
 	{
         "tg_chat_id": 217826967,
-        "tg_channel_name": "-1002391915441"
+        "tg_channel_name": "fake channel"
       }
     ]
   }`

@@ -4,6 +4,7 @@ import (
 	"bodygraph-bot/pkg/api"
 	"bodygraph-bot/pkg/common"
 	"encoding/json"
+	"fmt"
 	"github.com/go-telegram/bot/models"
 	"log"
 	"sync"
@@ -119,44 +120,62 @@ func fetchActionsUrl(url string) {
 
 	log.Println("items in channel")
 
-	checked := make([]common.ActionsCheckUserInChannel, len(result.Response.CheckUserInChannel))
+	checked := make([]common.ActionsCheckUserInChannel, 0)
 
-	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, 50)
+	channelGroup := make(map[string][]common.ActionsCheckUserInChannel)
 
-	uniqueChannel := make(map[string]bool)
+	minChannelLength := 0
+	minUserLength := 0
 
 	for _, item := range result.Response.CheckUserInChannel {
-		uniqueChannel[item.TgChannel] = true
-	}
-
-	channelsMap := make(map[string]models.ChatFullInfo)
-
-	for channelName := range uniqueChannel {
-		if chatInfo, err := getChannelByName(channelName); err == nil {
-			channelsMap[channelName] = *chatInfo
+		if _, ok := channelGroup[item.TgChannel]; !ok {
+			channelGroup[item.TgChannel] = make([]common.ActionsCheckUserInChannel, 0)
+			if len(item.TgChannel) > minChannelLength {
+				minChannelLength = len(item.TgChannel)
+			}
 		}
+
+		channelGroup[item.TgChannel] = append(channelGroup[item.TgChannel], item)
+		chatIdStr := fmt.Sprintf("%d", item.TgChatID)
+		if len(chatIdStr) > minUserLength {
+			minUserLength = len(chatIdStr)
+		}
+
 	}
 
-	for idx, item := range result.Response.CheckUserInChannel {
+	for channelName, items := range channelGroup {
 
-		if _, ok := channelsMap[item.TgChannel]; !ok {
-			item.Exists = false
-			item.State = "channel-not-found"
-			checked[idx] = item
+		channel, err := getChannelByName(channelName)
+		if err != nil {
+			log.Printf("CHECKING CHANNEL «%s»: ERROR: %s", channelName, common.UnwrapError(err))
+			for _, item := range items {
+				item.Exists = false
+				item.State = "channel-not-found"
+				checked = append(checked, item)
+			}
 			continue
 		}
 
-		wg.Add(1)
-		semaphore <- struct{}{}
-		go func(index int, it common.ActionsCheckUserInChannel) {
-			defer wg.Done()
-			item.Exists, item.State = CheckUserInChannel(item.TgChatID, channelsMap[item.TgChannel])
-			checked[idx] = item
-			<-semaphore
-		}(idx, item)
+		log.Printf("CHECKING CHANNEL «%s»:", channel.Title)
+
+		var wg sync.WaitGroup
+		semaphore := make(chan struct{}, 1)
+		mu := sync.Mutex{}
+
+		for idx, item := range items {
+			wg.Add(1)
+			semaphore <- struct{}{}
+			go func(index int, it common.ActionsCheckUserInChannel, channel models.ChatFullInfo) {
+				defer wg.Done()
+				item.Exists, item.State = CheckUserInChannel(item.TgChatID, channel, minUserLength)
+				mu.Lock()
+				checked = append(checked, item)
+				mu.Unlock()
+				<-semaphore
+			}(idx, item, *channel)
+		}
+		wg.Wait()
 	}
-	wg.Wait()
 
 	checkUserInChannel = checked
 

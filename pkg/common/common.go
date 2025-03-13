@@ -159,3 +159,14 @@ func UnwrapError(err error) string {
 	msg = strings.Replace(msg, "Bad Request:", "", -1)
 	return strings.TrimSpace(msg)
 }
+
+func BoolToSign(b bool) string {
+	if b {
+		return "✓"
+	}
+	return "×"
+}
+
+func Red(s string) string {
+	return fmt.Sprintf("\033[0;31m%s\033[0m", s)
+}

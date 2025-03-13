@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/fatih/color"
 	tglib "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/google/uuid"
@@ -441,14 +442,10 @@ func SendMessageData(chatID int64, data common.MessageData) error {
 
 func getChannelByName(channelName string) (*models.ChatFullInfo, error) {
 	ctx := context.Background()
-	chatInfo, err := BotInstance.GetChat(ctx, &tglib.GetChatParams{ChatID: channelName})
-	if err != nil {
-		log.Printf("ERROR: Get channel by name «%s»: %s\n", channelName, common.UnwrapError(err))
-	}
-	return chatInfo, err
+	return BotInstance.GetChat(ctx, &tglib.GetChatParams{ChatID: channelName})
 }
 
-func CheckUserInChannel(userId int64, chatInfo models.ChatFullInfo) (bool, string) {
+func CheckUserInChannel(userId int64, chatInfo models.ChatFullInfo, minUserLength int) (bool, string) {
 
 	ctx := context.Background()
 
@@ -458,12 +455,16 @@ func CheckUserInChannel(userId int64, chatInfo models.ChatFullInfo) (bool, strin
 	})
 
 	if err != nil {
-		log.Printf("ERROR: CHECK USER IN CHANNEL | channel: «%s» | user: %-10d | error: %s\n", chatInfo.Title, userId, common.UnwrapError(err))
+		color.Set(color.FgRed)
+		log.Printf(" - user: %-*d | %s | ERROR: %s\n", minUserLength, userId, common.BoolToSign(false), common.UnwrapError(err))
+		color.Unset()
 		return false, "check-failed"
 	}
 
-	log.Printf("CHECK USER IN CHANNEL | channel: «%s» | user: %-9d | state: %s", chatInfo.Title, userId, info.Type)
+	inChannnel := info.Type == "member" || info.Type == "creator"
 
-	return info.Type == "member" || info.Type == "creator", fmt.Sprintf("%s", info.Type)
+	log.Printf(" - user: %-*d | %s | state: %s", minUserLength, userId, common.BoolToSign(inChannnel), info.Type)
+
+	return inChannnel, fmt.Sprintf("%s", info.Type)
 
 }
