@@ -159,7 +159,7 @@ func fetchActionsUrl(url string) {
 		log.Printf("CHECKING CHANNEL «%s»:", channel.Title)
 
 		var wg sync.WaitGroup
-		semaphore := make(chan struct{}, 1)
+		semaphore := make(chan struct{}, 50)
 		mu := sync.Mutex{}
 
 		for idx, item := range items {
