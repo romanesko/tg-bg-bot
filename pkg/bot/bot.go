@@ -397,7 +397,9 @@ func OnInlineKeyboardSelect(mes models.MaybeInaccessibleMessage, serializedData 
 		return
 	}
 
-	DeleteMessage(chatId, mes.Message.ID)
+	if !decoded.KeepOnClick {
+		DeleteMessage(chatId, mes.Message.ID)
+	}
 
 	err = processOuter(chatId, &decoded)
 	if err != nil {
@@ -445,6 +447,11 @@ func getChannelByName(channelName string) (*models.ChatFullInfo, error) {
 	return BotInstance.GetChat(ctx, &tglib.GetChatParams{ChatID: channelName})
 }
 
+func getChatByID(chatID int64) (*models.ChatFullInfo, error) {
+	ctx := context.Background()
+	return BotInstance.GetChat(ctx, &tglib.GetChatParams{ChatID: chatID})
+}
+
 func CheckUserInChannel(userId int64, chatInfo models.ChatFullInfo, minUserLength int) (bool, string) {
 
 	ctx := context.Background()
@@ -461,10 +468,10 @@ func CheckUserInChannel(userId int64, chatInfo models.ChatFullInfo, minUserLengt
 		return false, "check-failed"
 	}
 
-	inChannnel := info.Type == "member" || info.Type == "creator"
+	inChannel := info.Type == "member" || info.Type == "creator" || info.Type == "administrator"
 
-	log.Printf(" - user: %-*d | %s | state: %s", minUserLength, userId, common.BoolToSign(inChannnel), info.Type)
+	log.Printf(" - user: %-*d | %s | state: %s", minUserLength, userId, common.BoolToSign(inChannel), info.Type)
 
-	return inChannnel, fmt.Sprintf("%s", info.Type)
+	return inChannel, fmt.Sprintf("%s", info.Type)
 
 }

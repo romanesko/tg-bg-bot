@@ -53,7 +53,7 @@ func fetchMessagesUrl(url string) {
 	}
 	bodyString, err := api.FetchUrlAbstract(url, params)
 	if err != nil {
-		log.Println("Error fetching data", err)
+		common.ErrorLog(fmt.Sprintf("Error fetching data: %s", err))
 		return
 	}
 
@@ -62,9 +62,13 @@ func fetchMessagesUrl(url string) {
 	if err != nil {
 
 		var generic interface{}
-		_ = json.Unmarshal(bodyString, &generic)
+		err = json.Unmarshal(bodyString, &generic)
 
-		log.Println("Error decoding response", generic)
+		if err != nil {
+			common.ErrorLog(fmt.Sprintf("NOT A JSON: %s", bodyString))
+		} else {
+			log.Println("Error decoding response", generic)
+		}
 		return
 	}
 
@@ -93,7 +97,11 @@ func fetchMessagesUrl(url string) {
 
 }
 
-var checkUserInChannel []common.ActionsCheckUserInChannel
+var (
+	checkUserInChannel []common.ActionsCheckUserInChannel
+	checkUserAvailable []common.ActionsCheckUserAvailable
+	mock               interface{}
+)
 
 func fetchActionsUrl(url string) {
 
@@ -102,10 +110,12 @@ func fetchActionsUrl(url string) {
 	req := common.ActionsDTO{}
 
 	req.CheckUserInChannel = checkUserInChannel
+	req.CheckUserAvailable = checkUserAvailable
+	req.Mock = mock
 
 	bodyString, err := api.FetchUrlAbstract(url, req)
 	if err != nil {
-		log.Println("Error fetching data", err)
+		common.ErrorLog(fmt.Sprintf("Error fetching data: %s", err))
 		return
 	}
 
@@ -113,11 +123,36 @@ func fetchActionsUrl(url string) {
 	err = json.Unmarshal(bodyString, &result)
 	if err != nil {
 		var generic interface{}
-		_ = json.Unmarshal(bodyString, &generic)
-		log.Println("Error decoding response", generic)
+		err = json.Unmarshal(bodyString, &generic)
+
+		if err != nil {
+			common.ErrorLog(fmt.Sprintf("NOT A JSON: %s", bodyString))
+		} else {
+			log.Println("Error decoding response", generic)
+		}
 		return
 	}
 
+	doCheckUserAvailable(result.Response.CheckUserAvailable)
+	doCheckUserInChannel(result.Response.CheckUserInChannel)
+
+	mock = result.Response.Mock
+
+}
+
+func doCheckUserAvailable(reqItems []common.ActionsCheckUserAvailable) {
+
+	for idx, _ := range reqItems {
+		item := &reqItems[idx]
+		_, err := getChatByID(item.TgChatID)
+		item.Available = err == nil
+	}
+
+	checkUserAvailable = reqItems
+
+}
+
+func doCheckUserInChannel(reqItems []common.ActionsCheckUserInChannel) {
 	log.Println("items in channel")
 
 	checked := make([]common.ActionsCheckUserInChannel, 0)
@@ -127,7 +162,7 @@ func fetchActionsUrl(url string) {
 	minChannelLength := 0
 	minUserLength := 0
 
-	for _, item := range result.Response.CheckUserInChannel {
+	for _, item := range reqItems {
 		if _, ok := channelGroup[item.TgChannel]; !ok {
 			channelGroup[item.TgChannel] = make([]common.ActionsCheckUserInChannel, 0)
 			if len(item.TgChannel) > minChannelLength {
@@ -178,7 +213,7 @@ func fetchActionsUrl(url string) {
 	}
 
 	checkUserInChannel = checked
-
+	log.Println("Checked", len(checked), "users")
 }
 
 func sendQueueMessage(item common.QueueItem) SendMessageStatus {

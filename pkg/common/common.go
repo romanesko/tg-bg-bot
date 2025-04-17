@@ -162,11 +162,15 @@ func UnwrapError(err error) string {
 
 func BoolToSign(b bool) string {
 	if b {
-		return "✓"
+		return Green("✓")
 	}
-	return "×"
+	return Red("×")
 }
 
 func Red(s string) string {
 	return fmt.Sprintf("\033[0;31m%s\033[0m", s)
+}
+
+func Green(s string) string {
+	return fmt.Sprintf("\033[0;32m%s\033[0m", s)
 }

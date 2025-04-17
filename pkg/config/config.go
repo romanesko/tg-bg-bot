@@ -32,22 +32,31 @@ func Init() {
 	file, err := os.OpenFile("config.yaml", os.O_RDONLY, 0600)
 
 	if err != nil {
-		log.Fatalf("error opening/creating file: %v", err)
-	}
-	defer file.Close()
+		localConf = &LocalConfig{}
+		localConf.Bot.Token = os.Getenv("BOT_TOKEN")
+		localConf.Api.ConfigUrl = os.Getenv("CONFIG_URL")
+		localConf.Api.Token = os.Getenv("CONFIG_TOKEN")
 
-	dec := yaml.NewDecoder(file)
-	err = dec.Decode(&localConf)
-	if err != nil {
-		panic(err)
+	} else {
+		defer file.Close()
+
+		dec := yaml.NewDecoder(file)
+		err = dec.Decode(&localConf)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	if localConf.Api.ConfigUrl == "" {
-		log.Fatalf("config.yaml is missing api.config_url")
+		log.Fatalf("config.yaml is missing api.config_url or CONFIG_URL env")
 	}
 
 	if localConf.Api.Token == "" {
-		log.Fatalf("config.yaml is missing api.token")
+		log.Fatalf("config.yaml is missing api.token or CONFIG_TOKEN env")
+	}
+
+	if localConf.Bot.Token == "" {
+		log.Fatalf("config.yaml is missing bot.token or BOT_TOKEN env")
 	}
 
 	err = fetchRemoteConfig(localConf.Api.ConfigUrl, localConf.Api.Token, localConf.Bot.Token)

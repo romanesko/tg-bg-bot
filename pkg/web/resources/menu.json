@@ -1,0 +1,60 @@
+{
+  "status": "complete",
+  "response": {
+    "messages": [
+      {
+        "text": "Первое сообщение"
+      },
+      {
+        "text": "Второе сообщение с картинкой",
+        "images": [
+          "https://render.fineartamerica.com/images/rendered/default/print/5.5/8/break/images/artworkimages/medium/2/naked-ass-necklace-gene-oryx.jpg",
+          "https://avatars.mds.yandex.net/i?id=f0f808924f403eecf559ccb0e5d74996_l-5228318-images-thumbs&n=13"
+        ]
+      },
+      {
+        "text": "Ссылка без превью: https://ya.ru"
+      },
+      {
+        "text": "Ссылка с превью: https://ya.ru",
+        "show_preview": true
+      }
+    ],
+    "buttons_header": "Куда дальше?",
+    "buttons": [
+      {
+        "label": "Один",
+        "url": "/subitem",
+        "keep_on_click": true
+      },
+      {
+        "label": "Два",
+        "url": "/subitem2"
+      },
+      {
+        "label": "Три",
+        "url": "/relative-url-to-next-action"
+      },
+      {
+        "label": "Четыре",
+        "url": "https://absplute-url-to-next-action"
+      },
+      {
+        "label": "Пять",
+        "url": "/relative-url-to-next-action"
+      },
+      {
+        "label": "Шесть",
+        "url": "https://absplute-url-to-next-action"
+      },
+      {
+        "label": "Ссылка на внешний ресурс",
+        "link": "https://ya.ru"
+      }
+    ],
+    "buttons_rows": [
+      2,
+      5
+    ]
+  }
+}

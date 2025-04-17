@@ -1,0 +1,25 @@
+{
+  "status": "complete",
+  "response": {
+    "start": "/menu",
+    "buttons_header": "Выберите пункт меню ↓",
+    "actions": [
+      {
+        "url": "/actions",
+        "interval": 10
+      }
+    ],
+    "commands": [
+      {
+        "command": "/start",
+        "description": "Начать с начала"
+      },
+      {
+        "command": "/balance",
+        "description": "Баланс",
+        "url": "/balance"
+      }
+    ],
+    "admin_password": "123456"
+  }
+}

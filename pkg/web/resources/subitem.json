@@ -1,0 +1,21 @@
+{
+  "status": "complete",
+  "response": {
+    "messages": [
+      {
+        "text": "Подпункт"
+      }
+    ],
+    "buttons_header": "Куда дальше?",
+    "buttons": [
+      {
+        "label": "В начало",
+        "url": "/menu"
+      }
+    ],
+    "callback": {
+      "url": "/calback-url",
+      "context": {}
+    }
+  }
+}

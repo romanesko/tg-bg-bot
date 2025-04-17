@@ -1,0 +1,32 @@
+{
+  "status": "complete",
+  "response": {
+    "check_user_in_channel": [
+      {
+        "tg_chat_id": 2042663,
+        "tg_channel_name": "@FromCTOtoConsult"
+      },
+      {
+        "tg_chat_id": 217826967,
+        "tg_channel_name": "@FromCTOtoConsult"
+      },
+      {
+        "tg_chat_id": 1061501189,
+        "tg_channel_name": "@FromCTOtoConsult"
+      },
+      {
+        "tg_chat_id": 217826967,
+        "tg_channel_name": "fake channel"
+      }
+    ],
+    "check_user_available": [
+      {
+        "tg_chat_id": 2042663
+      },
+      {
+        "tg_chat_id": 2042664
+      }
+    ],
+    "mock": {"foo": "bar"}
+  }
+}

@@ -51,7 +51,7 @@ func sendRequest(tgChatId int64, url string, params interface{}) error {
 	common.FuncLog("sendRequest", tgChatId, url, params)
 	resp, err := api.FetchUrl(url, params)
 	if err != nil {
-		println("Error fetching data", err)
+		common.ErrorLog(fmt.Sprintf("Error fetching data: %s", err))
 		return err
 	}
 

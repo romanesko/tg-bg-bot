@@ -37,10 +37,12 @@ func FetchUrl(url string, params interface{}) (*Response, error) {
 	result := Response{}
 	err = json.Unmarshal(bodyString, &result)
 	if err != nil {
-
 		var generic interface{}
-		_ = json.Unmarshal(bodyString, &generic)
-		return nil, fmt.Errorf("error decoding response: %s", generic)
+		err = json.Unmarshal(bodyString, &generic)
+		if err != nil {
+			return nil, fmt.Errorf("NOT A JSON: %s", bodyString)
+		}
+		return nil, fmt.Errorf("response doesn't match required model: %s", generic)
 	}
 	return &result, nil
 }
@@ -131,6 +133,43 @@ func fetchUrl(url string, params interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bodyBytes, nil
+
+	jsonData, textPart, err := extractJSON(bodyBytes)
+
+	if err != nil {
+
+		return nil, err
+	}
+
+	if textPart != nil {
+		color.Set(color.FgYellow)
+		log.Println(string(textPart))
+		color.Unset()
+	}
+
+	return jsonData, nil
+
+}
+
+func extractJSON(data []byte) (jsonData []byte, textPart []byte, err error) {
+
+	strData := string(data)
+
+	if strings.HasPrefix(strings.TrimSpace(strData), "{") {
+		jsonData = data
+		return
+	}
+
+	idx := strings.Index(strData, "{")
+
+	if idx == -1 {
+		err = fmt.Errorf("invalid json: %s", strData)
+		return
+	}
+
+	textPart = []byte(strData[:idx]) // everything before needle
+	jsonData = []byte(strData[idx:])
+
+	return
 
 }

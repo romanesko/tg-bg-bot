@@ -88,6 +88,7 @@ type MenuItem struct {
 	Link            string                 `json:"link,omitempty"`
 	ProfileRequired bool                   `json:"ask_profile,omitempty"`
 	Context         map[string]interface{} `json:"context,omitempty"`
+	KeepOnClick     bool                   `json:"keep_on_click,omitempty"`
 }
 
 func (m *MenuItem) ToJson() (string, error) {
@@ -125,8 +126,15 @@ type ActionsCheckUserInChannel struct {
 	State     string `json:"state"`
 }
 
+type ActionsCheckUserAvailable struct {
+	TgChatID  int64 `json:"tg_chat_id"`
+	Available bool  `json:"available"`
+}
+
 type ActionsDTO struct {
 	CheckUserInChannel []ActionsCheckUserInChannel `json:"check_user_in_channel"`
+	CheckUserAvailable []ActionsCheckUserAvailable `json:"check_user_available"`
+	Mock               interface{}                 `json:"mock"`
 }
 
 type ActionsResponse struct {

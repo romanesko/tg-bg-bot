@@ -1,0 +1,10 @@
+{
+  "status": "complete",
+  "response": {
+    "messages": [
+      {
+        "text": "Ваш баланс: 1000 рублей"
+      }
+    ]
+  }
+}
